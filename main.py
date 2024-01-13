@@ -3,52 +3,68 @@ import re
 from bs4 import BeautifulSoup
 from collections import Counter
 
-page = "Microsoft"
-section = "History"
-url = 'https://en.wikipedia.org/w/api.php'
+def countWords(wordlist):
+    word_count = {}
+    for word in wordlist:
+        if word in word_count:
+            word_count[word] += 1
+        else:
+            word_count[word] = 1
+    return Counter(word_count)
 
-params = {
-            'action': 'parse',
-            'page': page,
-            'format': 'json',
-            'prop':'sections',
-            'redirects':''
-        }
-
-response = requests.get(url, params)
-data = response.json()
-sectionIndex = 0
-for sec in data['parse']['sections']:
-    if sec['line'] == section:
-        sectionIndex = sec['index']
-
-params = {
-            'action': 'parse',
-            'page': page,
-            'format': 'json',
-            'prop':'text',
-            'section': sectionIndex,
-            'redirects':''
-        }
-
-response = requests.get(url, params)
-data = response.json()
-raw_html = data['parse']['text']['*']
-soup = BeautifulSoup(raw_html,'html.parser')
-
-wordlist = []
-for items in soup.select("span.mw-headline, p, figcaption"):
-    content = items.text
-    words = re.sub("[^\w]", " ",  content).split()
-    wordlist += words
-
-word_count = {}
-for word in wordlist:
-    if word in word_count:
-        word_count[word] += 1
+def createWordList(soup, excludeWordsList):
+    wordlist = []
+    pattern = "|".join(excludeWordsList)
+    for items in soup.select("span.mw-headline, p, figcaption"):
+        content = items.text
+        words = re.sub(pattern, " ",  content).split()
+        wordlist += words
+    return wordlist
+        
+def wikiApiJson(url, page = "Microsoft", section = None):
+    params = {
+        'action': 'parse',
+        'page': page,
+        'format': 'json',
+        'redirects':''
+    }
+    
+    if section:
+        params['prop'] = 'text'
+        params['section'] = section
     else:
-        word_count[word] = 1
-c = Counter(word_count)
-top = c.most_common(10)
-print(top)
+        params['prop'] = 'sections'
+    
+    return requests.get(url, params).json()
 
+def main():
+    page = "Microsoft"
+    section = "History"
+    url = 'https://en.wikipedia.org/w/api.php'
+    excludeWordsList = ["[^a-zA-Z0-9'-]"]
+    wordsToPrint = 10
+        
+    wordsToPrintInput = input("Enter the number of words you wish to return (default: 10): ") 
+    if (type(wordsToPrintInput) == type(wordsToPrint)):
+        wordsToPrint = wordsToPrintInput
+    
+    excludeWordsInput = input("Enter the words you wish to exclude separated by space (default: none): ")
+    excludeWordsList += re.sub("[^a-zA-Z0-9'-]", " ", excludeWordsInput).split()
+    print(excludeWordsList)
+    
+    pageData = wikiApiJson(url, page)
+    sectionIndex = 0
+    for sec in pageData['parse']['sections']:
+        if sec['line'] == section:
+            sectionIndex = sec['index']
+    
+    sectionData = wikiApiJson(url, page, sectionIndex)
+    sectionHtml = sectionData['parse']['text']['*']
+    soup = BeautifulSoup(sectionHtml,'html.parser')
+    
+    wordlist = createWordList(soup, excludeWordsList)
+    countedWordList = countWords(wordlist)
+    print(countedWordList.most_common(wordsToPrint))
+    
+if __name__ == "__main__":
+    main()
