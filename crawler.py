@@ -64,6 +64,7 @@ def main():
     wordlist = createWordList(soup, excludeWordsList)
     countedWordList = countWords(wordlist)
     print(countedWordList.most_common(wordsToPrint))
+    input("Press Enter to close window.")
     
 if __name__ == "__main__":
     main()
