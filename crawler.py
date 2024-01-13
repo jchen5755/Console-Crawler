@@ -50,7 +50,6 @@ def main():
     
     excludeWordsInput = input("Enter the words you wish to exclude separated by space (default: none): ")
     excludeWordsList += re.sub("[^a-zA-Z0-9'-]", " ", excludeWordsInput).split()
-    print(excludeWordsList)
     
     pageData = wikiApiJson(url, page)
     sectionIndex = 0
